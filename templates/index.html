@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Library Management System</title>
+    <!-- Include CSS (modify the path accordingly) -->
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Library Catalog</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Publication Date</th>
+                <th>ISBN</th>
+                <th>Copies Available</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for book in books %}
+                <tr>
+                    <td>{{ book[1] }}</td>  <!-- Title -->
+                    <td>{{ book[2] }}</td>  <!-- Author -->
+                    <td>{{ book[3] }}</td>  <!-- Publication Date -->
+                    <td>{{ book[4] }}</td>  <!-- ISBN -->
+                    <td>{{ book[5] }}</td>  <!-- Copies Available -->
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
