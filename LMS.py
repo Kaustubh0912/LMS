@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
-import mysql.connector  # Import MySQL connector
+import mysql.connector
+
+global cursor, tree, bk_status, bk_name, bk_id, author_name, card_id, search_entry, db
 
 def issuer_card():
     Cid = simpledialog.askstring('Issuer Card ID', 'What is the Issuer\'s Card ID?\t\t\t')
@@ -32,8 +34,9 @@ def clear_fields():
     card_id.set('')
 
     try:
-        tree.selection_remove(tree.selection()[0])
-    except:
+        selected_item = tree.selection()[0]
+        tree.selection_remove(selected_item)
+    except IndexError:
         pass
 
 def clear_and_display():
@@ -59,7 +62,7 @@ def view_record():
     card_id.set(selection[4])
 
 def add_record():
-    global bk_name, bk_id, author_name, bk_status, card_id
+    global bk_name, bk_id, author_name, bk_status, card_id,db
 
     if bk_status.get() == 'Issued':
         card_id.set(issuer_card())
@@ -79,31 +82,7 @@ def add_record():
 
             messagebox.showinfo('Record added', 'The new record was successfully added to your database')
         except mysql.connector.IntegrityError:
-            messagebox.showerror('Book ID already in use!','The Book ID you are trying to enter is already in the database, please alter that book\'s record or check any discrepancies on your side')
-
-# def update_record():
-#     def update():
-#         global bk_status, bk_name, bk_id, author_name, card_id
-
-#         if bk_status.get() == 'Issued':
-#             card_id.set(issuer_card())
-#         else:
-#             card_id.set('N/A')
-
-#         cursor.execute('UPDATE Library SET BK_NAME=%s, BK_STATUS=%s, AUTHOR_NAME=%s, CARD_ID=%s WHERE BK_ID=%s',(bk_name.get(), bk_status.get(), author_name.get(), card_id.get(), bk_id.get()))
-#         db.commit()
-
-#         clear_and_display()
-
-#         edit.destroy()
-#         bk_id_entry.config(state='normal')
-#         clear.config(state='normal')
-
-#     bk_id_entry.config(state='disable')
-#     clear.config(state='disable')
-
-#     edit = tk.Button(left_frame, text='Update Record', font=btn_font, bg=btn_hlb_bg, width=20, command=update)
-#     edit.place(x=50, y=375)
+            messagebox.showerror('Book ID already in use!', 'The Book ID you are trying to enter is already in the database, please alter that book\'s record or check any discrepancies on your side')
 
 def remove_record():
     if not tree.selection():
@@ -129,6 +108,7 @@ def delete_inventory():
 
     cursor.execute('DELETE FROM Library')
     db.commit()
+
 def change_availability():
     global card_id, tree, cursor, db
 
@@ -153,6 +133,7 @@ def change_availability():
         db.commit()
 
     clear_and_display()
+
 def search_books():
     global tree, cursor
 
@@ -167,132 +148,233 @@ def search_books():
         "SELECT * FROM Library WHERE BK_NAME LIKE %s OR BK_ID LIKE %s OR AUTHOR_NAME LIKE %s",
         (f"%{search_keyword}%", f"%{search_keyword}%", f"%{search_keyword}%")
     )
-    
+
     data = cursor.fetchall()
 
     for records in data:
         tree.insert('', 'end', values=records)
 
+# Function to create the database and user table if they don't exist
+def create_database_if_not_exists():
+    try:
+        # Connect to MySQL without specifying a database
+        db = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="K@ustubh0912"
+        )
 
-# Variables
-lf_bg = 'LightSkyBlue'  # Left Frame Background Color
-rtf_bg = 'DeepSkyBlue'  # Right Top Frame Background Color
-rbf_bg = 'DodgerBlue'  # Right Bottom Frame Background Color
-btn_hlb_bg = 'SteelBlue'  # Background color for Head Labels and Buttons
+        cursor = db.cursor()
 
-lbl_font = ('Georgia', 13)  # Font for all labe
-entry_font = ('Times New Roman', 12)  # Font for all Entry widgets
-btn_font = ('Gill Sans MT', 13)
+        # Create the database if it doesn't exist
+        cursor.execute("CREATE DATABASE IF NOT EXISTS LoginCreds")
 
-# Initializing the main GUI window
-root = tk.Tk()
-root.title('PythonGeeks Library Management System')
-root.geometry('1600x900')
-root.resizable(0, 0)
+        # Use the database
+        cursor.execute("USE LoginCreds")
 
-tk.Label(root, text='LIBRARY MANAGEMENT SYSTEM', font=("Noto Sans CJK TC", 15, 'bold'), bg=btn_hlb_bg,
-      fg='White').pack(side=tk.TOP, fill=tk.X)
+        # Create the user table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) NOT NULL,
+                password VARCHAR(255) NOT NULL
+            )
+        """)
+    except mysql.connector.Error as err:
+        messagebox.showerror("Database Error", f"Error: {err}")
 
-# StringVars
-bk_status = tk.StringVar()
-bk_name = tk.StringVar()
-bk_id = tk.StringVar()
-author_name = tk.StringVar()
-card_id = tk.StringVar()
+# Function to check login credentials
+def login():
+    username = entry_username.get()
+    password = entry_password.get()
 
-# Frames
-left_frame = tk.Frame(root, bg=lf_bg)
-left_frame.place(x=0, y=30, relwidth=0.3, relheight=0.96)
+    try:
+        # Connect to the MySQL database
+        db = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="K@ustubh0912",
+            database="LoginCreds"
+        )
 
-RT_frame = tk.Frame(root, bg=rtf_bg)
-RT_frame.place(relx=0.3, y=30, relheight=0.2, relwidth=0.7)
+        cursor = db.cursor()
 
-RB_frame = tk.Frame(root)
-RB_frame.place(relx=0.3, rely=0.24, relheight=0.785, relwidth=0.7)
+        # Execute a query to fetch user data based on the entered username
+        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+        user_data = cursor.fetchone()
 
-# Left Frame
-tk.Label(left_frame, text='Book Name', bg=lf_bg, font=lbl_font).place(x=98, y=25)
-tk.Entry(left_frame, width=25, font=entry_font, textvariable=bk_name).place(x=45, y=55)
+        if user_data:
+            # Check if the entered password matches the password stored in the database
+            if password == user_data[2]:
+                messagebox.showinfo("Login Successful", "Welcome, " + username + "!")
+                screen.destroy()
+                open_main_page()
+            else:
+                messagebox.showerror("Login Failed", "Incorrect password")
+        else:
+            messagebox.showerror("Login Failed", "User not found")
 
-tk.Label(left_frame, text='Book ID', bg=lf_bg, font=lbl_font).place(x=110, y=105)
-bk_id_entry = tk.Entry(left_frame, width=25, font=entry_font, textvariable=bk_id)
-bk_id_entry.place(x=45, y=135)
+    except mysql.connector.Error as err:
+        messagebox.showerror("Database Error", f"Error: {err}")
 
-tk.Label(left_frame, text='Author Name', bg=lf_bg, font=lbl_font).place(x=90, y=185)
-tk.Entry(left_frame, width=25, font=entry_font, textvariable=author_name).place(x=45, y=215)
+# Function to open the main page
+def open_main_page():
+    global bk_status,bk_id,bk_name,author_name,card_id,tree,cursor,db
+    lf_bg = 'SkyBlue'  # Left Frame Background Color
+    rtf_bg = '#0099ff'  # Right Top Frame Background Color
+    rbf_bg = 'LightSkyBlue'  # Right Bottom Frame Background Color
+    btn_hlb_bg = '#6699ff'  # Background color for Head Labels and Buttons
 
-tk.Label(left_frame, text='Status of the Book', bg=lf_bg, font=lbl_font).place(x=75, y=265)
-dd = tk.OptionMenu(left_frame, bk_status, *['Available', 'Issued'])
-dd.configure(font=entry_font, width=12)
-dd.place(x=75, y=300)
+    lbl_font = ('Georgia', 13)  # Font for all labels
+    entry_font = ('Times New Roman', 12)  # Font for all Entry widgets
+    btn_font = ('Gill Sans MT', 13)
 
-submit = tk.Button(left_frame, text='Add new record', font=btn_font, bg=btn_hlb_bg, width=20, command=add_record)
-submit.place(x=50, y=375)
+    # Initializing the main GUI window
+    root = tk.Tk()
+    root.title('Library Management System')
+    root.geometry('1280x720')
+    root.resizable(0, 0)
 
-clear = tk.Button(left_frame, text='Clear fields', font=btn_font, bg=btn_hlb_bg, width=20, command=clear_fields)
-clear.place(x=50, y=435)
+    tk.Label(root, text='LIBRARY MANAGEMENT SYSTEM', font=("Noto Sans CJK TC", 15, 'bold'), bg="LightSkyBlue", fg='black').pack(side=tk.TOP, fill=tk.X)
 
-# Right Top Frame
-tk.Button(RT_frame, text='Delete book record', font=btn_font, bg=btn_hlb_bg, width=17, command=remove_record).place(x=8,y=30)
-tk.Button(RT_frame, text='Delete full inventory', font=btn_font, bg=btn_hlb_bg, width=17, command=delete_inventory).place(x=178, y=30)
-# tk.Button(RT_frame, text='Update book details', font=btn_font, bg=btn_hlb_bg, width=17,command=update_record).place(x=348, y=30)
-tk.Button(RT_frame, text='Change Book Availability', font=btn_font, bg=btn_hlb_bg, width=19,command=change_availability).place(x=518, y=30)
+    # StringVars
+    bk_status = tk.StringVar()
+    bk_name = tk.StringVar()
+    bk_id = tk.StringVar()
+    author_name = tk.StringVar()
+    card_id = tk.StringVar()
 
-# Right Bottom Frame
-tk.Label(RB_frame, text='BOOK INVENTORY', bg=rbf_bg, font=("Noto Sans CJK TC", 15, 'bold')).pack(side=tk.TOP, fill=tk.X)
-search_label = tk.Label(RT_frame, text='Search Books:', font=lbl_font, bg=rtf_bg)
-search_label.place(x=300, y=0)
+    # Frames
+    left_frame = tk.Frame(root, bg=lf_bg)
+    left_frame.place(x=0, y=30, relwidth=0.3, relheight=0.96)
 
-search_entry = tk.Entry(RT_frame, width=30, font=entry_font)
-search_entry.place(x=425, y=0)
+    RT_frame = tk.Frame(root, bg=rtf_bg)
+    RT_frame.place(relx=0.3, y=30, relheight=0.2, relwidth=0.7)
 
-search_button = tk.Button(RT_frame, text='Search books', font=('Gill Sans MT', 10), bg='LightSkyBlue', width=15, command=search_books)
-search_button.place(x=300, y=0)
+    RB_frame = tk.Frame(root, bg=rbf_bg)
+    RB_frame.place(relx=0.3, rely=0.24, relheight=0.785, relwidth=0.7)
 
-tree = ttk.Treeview(RB_frame, selectmode='browse', columns=('Book Name', 'Book ID', 'Author', 'Status', 'Issuer Card ID'))
+    # Left Frame
+    tk.Label(left_frame, text='Book Name', bg=lf_bg, font=lbl_font).place(x=98, y=25)
+    tk.Entry(left_frame, width=25, font=entry_font, textvariable=bk_name).place(x=45, y=55)
 
-XScrollbar = ttk.Scrollbar(tree, orient='horizontal', command=tree.xview)
-YScrollbar = ttk.Scrollbar(tree, orient='vertical', command=tree.yview)
-XScrollbar.pack(side='bottom', fill='x')
-YScrollbar.pack(side='right', fill='y')
+    tk.Label(left_frame, text='Book ID', bg=lf_bg, font=lbl_font).place(x=110, y=105)
+    bk_id_entry = tk.Entry(left_frame, width=25, font=entry_font, textvariable=bk_id)
+    bk_id_entry.place(x=45, y=135)
 
-tree.config(xscrollcommand=XScrollbar.set, yscrollcommand=YScrollbar.set)
+    tk.Label(left_frame, text='Author Name', bg=lf_bg, font=lbl_font).place(x=90, y=185)
+    tk.Entry(left_frame, width=25, font=entry_font, textvariable=author_name).place(x=45, y=215)
 
-tree.heading('Book Name', text='Book Name', anchor='center')
-tree.heading('Book ID', text='Book ID', anchor='center')
-tree.heading('Author', text='Author', anchor='center')
-tree.heading('Status', text='Status of the Book', anchor='center')
-tree.heading('Issuer Card ID', text='Card ID of the Issuer', anchor='center')
+    tk.Label(left_frame, text='Status of the Book', bg=lf_bg, font=lbl_font).place(x=75, y=265)
+    dd = tk.OptionMenu(left_frame, bk_status, *['Available', 'Issued'])
+    dd.configure(font=entry_font, width=12)
+    dd.place(x=75, y=300)
 
-tree.column('#0', width=0, stretch='no')
-tree.column('#1', width=225, stretch='no')
-tree.column('#2', width=70, stretch='no')
-tree.column('#3', width=150, stretch='no')
-tree.column('#4', width=105, stretch='no')
-tree.column('#5', width=132, stretch='no')
+    submit = tk.Button(left_frame, text='Add new record', font=btn_font, bg=btn_hlb_bg, width=20, command=add_record)
+    submit.place(x=50, y=375)
 
-tree.place(y=30, x=0, relheight=0.9, relwidth=1)
+    clear = tk.Button(left_frame, text='Clear fields', font=btn_font, bg=btn_hlb_bg, width=20, command=clear_fields)
+    clear.place(x=50, y=435)
 
-# Database connection
-db = mysql.connector.connect(
-    host='localhost',
-    user='root',
-    password='K@ustubh0912',
-    database='library'
-)
-cursor = db.cursor()
+    # Right Top Frame
+    tk.Button(RT_frame, text='Delete book record', font=btn_font, bg=btn_hlb_bg, width=17, command=remove_record).place(x=8, y=30)
+    tk.Button(RT_frame, text='Delete full inventory', font=btn_font, bg=btn_hlb_bg, width=17, command=delete_inventory).place(x=178, y=30)
+    tk.Button(RT_frame, text='Change Book Availability', font=btn_font, bg=btn_hlb_bg, width=19, command=change_availability).place(x=348, y=30)
+    search_label = tk.Label(RT_frame, text='Search Books:', font=lbl_font, bg=rtf_bg)
+    search_label.place(x=430, y=100)
+    global search_entry
+    search_entry = tk.Entry(RT_frame, width=30, font=entry_font)
+    search_entry.place(x=550, y=100)
 
-# Create the table if it doesn't exist
-cursor.execute('''CREATE TABLE IF NOT EXISTS Library (
-                    BK_NAME VARCHAR(255),
-                    BK_ID VARCHAR(255) PRIMARY KEY,
-                    AUTHOR_NAME VARCHAR(255),
-                    BK_STATUS VARCHAR(255),
-                    CARD_ID VARCHAR(255))''')
-db.commit()
+    search_image = tk.PhotoImage(file="D:\LMS\search.png")
+    search_button = tk.Button(RT_frame, image=search_image, font=('Gill Sans MT', 10), bg=btn_hlb_bg, width=20, command=search_books)
+    search_button.place(x=800, y=101)
 
-clear_and_display()
+    # Right Bottom Frame
+    tk.Label(RB_frame, text='BOOK INVENTORY', bg=rbf_bg, font=("Noto Sans CJK TC", 15, 'bold')).pack(side=tk.TOP, fill=tk.X)
 
-# Finalizing the window
-root.update()
-root.mainloop()
+    tree = ttk.Treeview(RB_frame, selectmode='browse', columns=('Book Name', 'Book ID', 'Author', 'Status', 'Issuer Card ID'))
+
+    XScrollbar = ttk.Scrollbar(tree, orient='horizontal', command=tree.xview)
+    YScrollbar = ttk.Scrollbar(tree, orient='vertical', command=tree.yview)
+    XScrollbar.pack(side='bottom', fill='x')
+    YScrollbar.pack(side='right', fill='y')
+
+    tree.config(xscrollcommand=XScrollbar.set, yscrollcommand=YScrollbar.set)
+
+    tree.heading('Book Name', text='Book Name', anchor='center')
+    tree.heading('Book ID', text='Book ID', anchor='center')
+    tree.heading('Author', text='Author', anchor='center')
+    tree.heading('Status', text='Status of the Book', anchor='center')
+    tree.heading('Issuer Card ID', text='Card ID of the Issuer', anchor='center')
+
+    tree.column('#0', width=0, stretch='no')
+    tree.column('#1', width=225, stretch='no')
+    tree.column('#2', width=70, stretch='no')
+    tree.column('#3', width=150, stretch='no')
+    tree.column('#4', width=105, stretch='no')
+    tree.column('#5', width=132, stretch='no')
+
+    tree.place(y=30, x=0, relheight=0.9, relwidth=1)
+
+    # Database connection
+    db = mysql.connector.connect(
+        host='localhost',
+        user='root',
+        password='K@ustubh0912',
+        database='library'
+    )
+    cursor = db.cursor()
+
+    # Create the table if it doesn't exist
+    cursor.execute('''CREATE TABLE IF NOT EXISTS Library (
+                        BK_NAME VARCHAR(255),
+                        BK_ID VARCHAR(255) PRIMARY KEY,
+                        AUTHOR_NAME VARCHAR(255),
+                        BK_STATUS VARCHAR(255),
+                        CARD_ID VARCHAR(255))''')
+    db.commit()
+
+    clear_and_display()
+
+    # Finalizing the window
+    root.update()
+    root.mainloop()
+
+# Create the database and user table if they don't exist
+create_database_if_not_exists()
+
+def main_screen():
+    global screen
+    screen = tk.Tk()
+    screen.geometry("1280x720")
+    screen.configure(bg="LightBlue")
+    screen.title("Login")
+
+    lblTitle = tk.Label(text="Login Page", font=("arial", 50, "bold"), fg="black", bg="LightBlue")
+    lblTitle.pack()
+
+    bordercolor = tk.Frame(screen, bg="black", width=800, height=400)
+    bordercolor.pack()
+
+    mainframe = tk.Frame(bordercolor, bg="#1a75ff", width=800, height=400)
+    mainframe.pack(padx=20, pady=20)
+
+    tk.Label(mainframe, text="Username", font=("arial", 30, "bold"), bg="#1a75ff").place(x=100, y=50)
+    tk.Label(mainframe, text="Password", font=("arial", 30, "bold"), bg="#1a75ff").place(x=100, y=150)
+
+    username = tk.StringVar()
+    password = tk.StringVar()
+
+    global entry_username, entry_password
+    entry_username = tk.Entry(mainframe, textvariable=username, width=12, bd=2, font=("arial", 30))
+    entry_username.place(x=400, y=50)
+    entry_password = tk.Entry(mainframe, textvariable=password, width=12, bd=2, font=("arial", 30), show="*")
+    entry_password.place(x=400, y=150)
+
+    login_btn = tk.Button(mainframe, text="LOGIN", font="arial", bg="LightBlue", width=30, command=login)
+    login_btn.place(x=250, y=250)
+
+    screen.mainloop()
+
+main_screen()
