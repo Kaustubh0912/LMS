@@ -154,6 +154,22 @@ def search_books():
     for records in data:
         tree.insert('', 'end', values=records)
 
+def issued_books():
+    global tree, cursor
+
+    # Clear the current displayed records
+    tree.delete(*tree.get_children())
+
+    # Perform a SQL query to search for books
+    cursor.execute(
+        "SELECT * FROM Library WHERE BK_STATUS LIKE %s ",
+        ('Issued',)
+    )
+
+    data = cursor.fetchall()
+
+    for records in data:
+        tree.insert('', 'end', values=records)
 # Function to create the database and user table if they don't exist
 def create_database_if_not_exists():
     try:
@@ -167,14 +183,14 @@ def create_database_if_not_exists():
         cursor = db.cursor()
 
         # Create the database if it doesn't exist
-        cursor.execute("CREATE DATABASE IF NOT EXISTS LoginCreds")
+        cursor.execute("CREATE DATABASE IF NOT EXISTS library")
 
         # Use the database
-        cursor.execute("USE LoginCreds")
+        cursor.execute("USE library")
 
         # Create the user table if it doesn't exist
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
+            CREATE TABLE IF NOT EXISTS admins (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 username VARCHAR(255) NOT NULL,
                 password VARCHAR(255) NOT NULL
@@ -194,21 +210,21 @@ def login():
             host="localhost",
             user="root",
             password="K@ustubh0912",
-            database="LoginCreds"
+            database="library"
         )
 
         cursor = db.cursor()
 
         # Execute a query to fetch user data based on the entered username
-        cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+        cursor.execute("SELECT * FROM admins WHERE username = %s", (username,))
         user_data = cursor.fetchone()
 
         if user_data:
             # Check if the entered password matches the password stored in the database
             if password == user_data[2]:
                 messagebox.showinfo("Login Successful", "Welcome, " + username + "!")
-                screen.destroy()
-                open_main_page()
+                log_pg.destroy()
+                admin_panel()
             else:
                 messagebox.showerror("Login Failed", "Incorrect password")
         else:
@@ -218,7 +234,7 @@ def login():
         messagebox.showerror("Database Error", f"Error: {err}")
 
 # Function to open the main page
-def open_main_page():
+def admin_panel():
     global bk_status,bk_id,bk_name,author_name,card_id,tree,cursor,db
     lf_bg = 'SkyBlue'  # Left Frame Background Color
     rtf_bg = '#0099ff'  # Right Top Frame Background Color
@@ -255,31 +271,32 @@ def open_main_page():
     RB_frame.place(relx=0.3, rely=0.24, relheight=0.785, relwidth=0.7)
 
     # Left Frame
-    tk.Label(left_frame, text='Book Name', bg=lf_bg, font=lbl_font).place(x=98, y=25)
-    tk.Entry(left_frame, width=25, font=entry_font, textvariable=bk_name).place(x=45, y=55)
+    tk.Label(left_frame, text='Book Name', bg=lf_bg, font=lbl_font).place(x=150, y=25)
+    tk.Entry(left_frame, width=25, font=entry_font, textvariable=bk_name).place(x=90, y=55)
 
-    tk.Label(left_frame, text='Book ID', bg=lf_bg, font=lbl_font).place(x=110, y=105)
+    tk.Label(left_frame, text='Book ID', bg=lf_bg, font=lbl_font).place(x=165, y=105)
     bk_id_entry = tk.Entry(left_frame, width=25, font=entry_font, textvariable=bk_id)
-    bk_id_entry.place(x=45, y=135)
+    bk_id_entry.place(x=90, y=135)
 
-    tk.Label(left_frame, text='Author Name', bg=lf_bg, font=lbl_font).place(x=90, y=185)
-    tk.Entry(left_frame, width=25, font=entry_font, textvariable=author_name).place(x=45, y=215)
+    tk.Label(left_frame, text='Author Name', bg=lf_bg, font=lbl_font).place(x=145, y=185)
+    tk.Entry(left_frame, width=25, font=entry_font, textvariable=author_name).place(x=90, y=215)
 
-    tk.Label(left_frame, text='Status of the Book', bg=lf_bg, font=lbl_font).place(x=75, y=265)
+    tk.Label(left_frame, text='Status of the Book', bg=lf_bg, font=lbl_font).place(x=125, y=265)
     dd = tk.OptionMenu(left_frame, bk_status, *['Available', 'Issued'])
     dd.configure(font=entry_font, width=12)
-    dd.place(x=75, y=300)
+    dd.place(x=125, y=300)
 
     submit = tk.Button(left_frame, text='Add new record', font=btn_font, bg=btn_hlb_bg, width=20, command=add_record)
-    submit.place(x=50, y=375)
+    submit.place(x=90, y=375)
 
     clear = tk.Button(left_frame, text='Clear fields', font=btn_font, bg=btn_hlb_bg, width=20, command=clear_fields)
-    clear.place(x=50, y=435)
+    clear.place(x=90, y=435)
 
     # Right Top Frame
     tk.Button(RT_frame, text='Delete book record', font=btn_font, bg=btn_hlb_bg, width=17, command=remove_record).place(x=8, y=30)
     tk.Button(RT_frame, text='Delete full inventory', font=btn_font, bg=btn_hlb_bg, width=17, command=delete_inventory).place(x=178, y=30)
     tk.Button(RT_frame, text='Change Book Availability', font=btn_font, bg=btn_hlb_bg, width=19, command=change_availability).place(x=348, y=30)
+    tk.Button(RT_frame, text='Issued Books', font=btn_font, bg=btn_hlb_bg, width=19, command=issued_books).place(x=538, y=30)
     search_label = tk.Label(RT_frame, text='Search Books:', font=lbl_font, bg=rtf_bg)
     search_label.place(x=430, y=100)
     global search_entry
@@ -344,17 +361,17 @@ def open_main_page():
 # Create the database and user table if they don't exist
 create_database_if_not_exists()
 
-def main_screen():
-    global screen
-    screen = tk.Tk()
-    screen.geometry("1280x720")
-    screen.configure(bg="LightBlue")
-    screen.title("Login")
+def login_page():
+    global log_pg
+    log_pg = tk.Tk()
+    log_pg.geometry("1280x720")
+    log_pg.configure(bg="LightBlue")
+    log_pg.title("Login")
 
     lblTitle = tk.Label(text="Login Page", font=("arial", 50, "bold"), fg="black", bg="LightBlue")
     lblTitle.pack()
 
-    bordercolor = tk.Frame(screen, bg="black", width=800, height=400)
+    bordercolor = tk.Frame(log_pg, bg="black", width=800, height=400)
     bordercolor.pack()
 
     mainframe = tk.Frame(bordercolor, bg="#1a75ff", width=800, height=400)
@@ -375,6 +392,6 @@ def main_screen():
     login_btn = tk.Button(mainframe, text="LOGIN", font="arial", bg="LightBlue", width=30, command=login)
     login_btn.place(x=250, y=250)
 
-    screen.mainloop()
+    log_pg.mainloop()
 
-main_screen()
+login_page()
