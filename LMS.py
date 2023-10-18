@@ -259,7 +259,6 @@ def admin_panel():
     root = tk.Tk()
     root.title('Library Management System')
     root.geometry('1280x720')
-    root.resizable(0, 0)
 
     tk.Label(root, text='LIBRARY MANAGEMENT SYSTEM', font=("Noto Sans CJK TC", 15, 'bold'), bg="LightSkyBlue", fg='black').pack(side=tk.TOP, fill=tk.X)
 
