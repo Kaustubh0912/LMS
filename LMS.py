@@ -374,7 +374,7 @@ def admin_panel():
 
 def login_page():
     # Function to create the login page
-    global log_pg
+    global log_pg,entry_username, entry_password
     log_pg = tk.Tk()
     log_pg.geometry("1280x720")
     log_pg.configure(bg="LightBlue")
@@ -394,10 +394,10 @@ def login_page():
     
     username = tk.StringVar()
     password = tk.StringVar()
-    global entry_username, entry_password
-    entry_username = tk.Entry(mainframe, textvariable=username, width=12, bd=2, font=("arial", 30))
+    
+    entry_username = tk.Entry(mainframe, textvariable=username, width=12, bd=2, font=("arial", 30,"italic"))
     entry_username.place(x=400, y=50)
-    entry_password = tk.Entry(mainframe, textvariable=password, width=12, bd=2, font=("arial", 30), show="*")
+    entry_password = tk.Entry(mainframe, textvariable=password, width=12, bd=2, font=("arial", 30,"italic"), show="*")
     entry_password.place(x=400, y=150)
     
     login_btn = tk.Button(mainframe, text="LOGIN", font="arial", bg="LightBlue", width=30, command=login)
