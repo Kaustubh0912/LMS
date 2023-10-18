@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox, simpledialog
 import mysql.connector
 
 # Global variables
-global cursor, tree, bk_status, bk_name, bk_id, author_name, card_id, search_entry, db, course_code
+global cursor, tree, bk_status, bk_name, bk_id, author_name, card_id, search_entry, db, course_code, username
 
 def create_database_if_not_exists():
     # Function to create the database and user table if they don't exist
@@ -34,7 +34,8 @@ def create_database_if_not_exists():
     except mysql.connector.Error as err:
         messagebox.showerror("Database Error", f"Error: {err}")
 def login():
-    username = entry_username.get()
+    global username 
+    username= entry_username.get()
     password = entry_password.get()
 
     try:
@@ -204,9 +205,47 @@ def issued_books():
     data = cursor.fetchall()
     for records in data:
         tree.insert('', 'end', values=records)
+def change_password():
+    # Function to change the password
+    global cursor, db
+
+    # Prompt the user to enter the current password
+    current_password = simpledialog.askstring('Current Password', 'Enter your current password:\t\t\t')
+    
+    if not current_password:
+        messagebox.showerror('Password not provided', 'You must provide your current password to change it.')
+        return
+
+    # Fetch the user's current password from the database based on the logged-in user
+    logged_in_user = username  # Assuming the username is stored here
+    cursor.execute("SELECT password FROM admins WHERE username = %s", (logged_in_user,))
+    user_data = cursor.fetchone()
+
+    if user_data:
+        stored_password = user_data[0]
+
+        # Check if the entered current password matches the stored password
+        if current_password == stored_password:
+            # Prompt the user to enter and confirm the new password
+            new_password = simpledialog.askstring('New Password', 'Enter your new password:\t\t\t')
+            if new_password:
+                confirm_new_password = simpledialog.askstring('Confirm New Password', 'Confirm your new password:\t\t\t')
+                if new_password == confirm_new_password:
+                    # Update the user's password in the database
+                    cursor.execute("UPDATE admins SET password = %s WHERE username = %s", (new_password, logged_in_user))
+                    db.commit()
+                    messagebox.showinfo('Password Changed', 'Your password has been successfully changed.')
+                else:
+                    messagebox.showerror('Password Mismatch', 'New passwords do not match.')
+            else:
+                messagebox.showerror('Invalid Password', 'Invalid new password.')
+        else:
+            messagebox.showerror('Incorrect Password', 'The entered current password is incorrect.')
+    else:
+        messagebox.showerror('User not found', 'User not found in the database.')
 
 def admin_panel():
-    global bk_status,bk_id,bk_name,author_name,card_id,tree,cursor,db,course_code
+    global bk_status,bk_id,bk_name,author_name,card_id,tree,cursor,db,course_code,search_entry
     lf_bg = 'SkyBlue'  # Left Frame Background Color
     rtf_bg = '#0099ff'  # Right Top Frame Background Color
     rbf_bg = 'LightSkyBlue'  # Right Bottom Frame Background Color
@@ -274,13 +313,15 @@ def admin_panel():
     tk.Button(RT_frame, text='Issued Books', font=btn_font, bg=btn_hlb_bg, width=19, command=issued_books).place(x=538, y=30)
     search_label = tk.Label(RT_frame, text='Search Books:', font=lbl_font, bg=rtf_bg)
     search_label.place(x=430, y=100)
-    global search_entry
+    
     search_entry = tk.Entry(RT_frame, width=30, font=entry_font)
     search_entry.place(x=550, y=100)
 
     search_image = tk.PhotoImage(file="D:\LMS\search.png")
     search_button = tk.Button(RT_frame, image=search_image, font=('Gill Sans MT', 10), bg=btn_hlb_bg, width=20, command=search_books)
     search_button.place(x=800, y=101)
+    change_password_btn = tk.Button(left_frame, text='Change Password', font=btn_font, bg=btn_hlb_bg, width=20, command=change_password)
+    change_password_btn.place(x=90, y=555)
 
     # Right Bottom Frame
     tk.Label(RB_frame, text='BOOK INVENTORY', bg=rbf_bg, font=("Noto Sans CJK TC", 15, 'bold')).pack(side=tk.TOP, fill=tk.X)
