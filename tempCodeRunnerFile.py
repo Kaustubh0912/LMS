@@ -1,14 +1,41 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 import mysql.connector
-from datetime import datetime
 
 # Global variables
 global cursor, tree, bk_status, bk_name, bk_id, author_name, card_id, search_entry, db, course_code, username
 
+def create_database_if_not_exists():
+    # Function to create the database and user table if they don't exist
+    try:
+        # Connect to MySQL without specifying a database
+        db = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="K@ustubh0912"
+        )
+
+        cursor = db.cursor()
+
+        # Create the database if it doesn't exist
+        cursor.execute("CREATE DATABASE IF NOT EXISTS library")
+
+        # Use the database
+        cursor.execute("USE library")
+
+        # Create the user table if it doesn't exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS admins (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) NOT NULL,
+                password VARCHAR(255) NOT NULL
+            )
+        """)
+    except mysql.connector.Error as err:
+        messagebox.showerror("Database Error", f"Error: {err}")
 def login():
     global username 
-    username = entry_username.get()
+    username= entry_username.get()
     password = entry_password.get()
 
     try:
@@ -24,22 +51,14 @@ def login():
 
         # Execute a query to fetch user data based on the entered username
         cursor.execute("SELECT * FROM admins WHERE username = %s", (username,))
-        admin_data = cursor.fetchone()
-        cursor.execute("SELECT * FROM students WHERE username = %s", (username,))
-        student_data = cursor.fetchone()
+        user_data = cursor.fetchone()
 
-        if admin_data:
-            if password == admin_data[2]:
+        if user_data:
+            # Check if the entered password matches the password stored in the database
+            if password == user_data[2]:
                 messagebox.showinfo("Login Successful", "Welcome, " + username + "!")
                 log_pg.destroy()
                 admin_panel()
-            else:
-                messagebox.showerror("Login Failed", "Incorrect password")
-        elif student_data:
-            if password == student_data[2]:
-                messagebox.showinfo("Login Successful", "Welcome, " + username + "!")
-                log_pg.destroy()
-                student_page()
             else:
                 messagebox.showerror("Login Failed", "Incorrect password")
         else:
@@ -47,7 +66,6 @@ def login():
 
     except mysql.connector.Error as err:
         messagebox.showerror("Database Error", f"Error: {err}")
-
 def issuer_card():
     # Function to get issuer's card ID
     Cid = simpledialog.askstring('Issuer Card ID', 'What is the Issuer\'s Card ID?\t\t\t')
@@ -85,6 +103,22 @@ def clear_and_display():
     clear_fields()
     display_records()
 
+def view_record():
+    # Function to view a record
+    global bk_name, bk_id, bk_status, author_name, card_id, tree,course_code
+    if not tree.focus():
+        messagebox.showerror('Select a row!', 'To view a record, you must select it in the table. Please do so before continuing.')
+        return
+    current_item_selected = tree.focus()
+    values_in_selected_item = tree.item(current_item_selected)
+    selection = values_in_selected_item['values']
+    bk_name.set(selection[0])
+    bk_id.set(selection[1])
+    author_name.set(selection[2])
+    bk_status.set(selection[3])
+    card_id.set(selection[4])
+    course_code.set(selection[5])
+
 def add_record():
     # Function to add a record
     global bk_name, bk_id, author_name, bk_status, card_id, db, course_code
@@ -93,12 +127,11 @@ def add_record():
     else:
         card_id.set('N/A')
     surety = messagebox.askyesno('Are you sure?', 'Are you sure this is the data you want to enter?\nPlease note that Book ID cannot be changed in the future')
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     if surety:
         try:
             cursor.execute(
-                'INSERT INTO Library (BK_NAME, BK_ID, AUTHOR_NAME, BK_STATUS, CARD_ID, COURSE_CODE, TIMESTAMP) VALUES (%s, %s, %s, %s, %s,%s,%s)',
-                (bk_name.get(), bk_id.get(), author_name.get(), bk_status.get(), card_id.get(), course_code.get(), current_time))
+                'INSERT INTO Library (BK_NAME, BK_ID, AUTHOR_NAME, BK_STATUS, CARD_ID, COURSE_CODE) VALUES (%s, %s, %s, %s, %s,%s)',
+                (bk_name.get(), bk_id.get(), author_name.get(), bk_status.get(), card_id.get(), course_code.get()))
             db.commit()
             clear_and_display()
             messagebox.showinfo('Record added', 'The new record was successfully added to your database')
@@ -139,17 +172,13 @@ def change_availability():
     if BK_status == 'Issued':
         surety = messagebox.askyesno('Is return confirmed?', 'Has the book been returned to you?')
         if surety:
-            return_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            cursor.execute('UPDATE Library SET BK_STATUS=%s, CARD_ID=%s, TIMESTAMP=%s WHERE BK_ID=%s', ('Available', 'N/A',return_time, BK_id))
+            cursor.execute('UPDATE Library SET BK_STATUS=%s, CARD_ID=%s WHERE BK_ID=%s', ('Available', 'N/A', BK_id))
             db.commit()
         else:
             messagebox.showinfo('Cannot be returned', 'The book status cannot be set to Available unless it has been returned')
     else:
-        issue_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        issue_card=issuer_card()
-        if issue_card != None:
-            cursor.execute('UPDATE Library SET BK_STATUS=%s, CARD_ID=%s, TIMESTAMP=%s WHERE BK_ID=%s', ('Issued', issue_card, issue_time, BK_id))
-            db.commit()
+        cursor.execute('UPDATE Library SET BK_STATUS=%s, CARD_ID=%s WHERE BK_ID=%s', ('Issued', issuer_card(), BK_id))
+        db.commit()
     clear_and_display()
 
 def search_books():
@@ -296,7 +325,7 @@ def admin_panel():
     # Right Bottom Frame
     tk.Label(RB_frame, text='BOOK INVENTORY', bg=rbf_bg, font=("Noto Sans CJK TC", 15, 'bold')).pack(side=tk.TOP, fill=tk.X)
 
-    tree = ttk.Treeview(RB_frame, selectmode='browse', columns=('Book Name', 'Book ID', 'Author', 'Status', 'Issuer Card ID','Course Code','Time'))
+    tree = ttk.Treeview(RB_frame, selectmode='browse', columns=('Book Name', 'Book ID', 'Author', 'Status', 'Issuer Card ID','Course Code'))
 
     XScrollbar = ttk.Scrollbar(tree, orient='horizontal', command=tree.xview)
     YScrollbar = ttk.Scrollbar(tree, orient='vertical', command=tree.yview)
@@ -311,7 +340,6 @@ def admin_panel():
     tree.heading('Status', text='Status of the Book', anchor='center')
     tree.heading('Issuer Card ID', text='Card ID of the Issuer', anchor='center')
     tree.heading('Course Code',text='Course Code',anchor='center')
-    tree.heading('Time',text='TIME',anchor='center')
 
     tree.column('#0', width=0, stretch='no')
     tree.column('#1', width=225, stretch='no')
@@ -320,7 +348,6 @@ def admin_panel():
     tree.column('#4', width=105, stretch='no')
     tree.column('#5', width=132, stretch='no')
     tree.column('#6', width=130,stretch='no')
-    tree.column('#7', width=120,stretch='no')
 
     tree.place(y=30, x=0, relheight=0.9, relwidth=1)
 
@@ -332,104 +359,18 @@ def admin_panel():
         database='library'
     )
     cursor = db.cursor()
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS Library (
-        BK_NAME VARCHAR(255),
-        BK_ID VARCHAR(255) PRIMARY KEY,
-        AUTHOR_NAME VARCHAR(255),
-        BK_STATUS VARCHAR(255),
-        CARD_ID VARCHAR(255),
-        COURSE_CODE VARCHAR(255),
-        TIMESTAMP DATETIME
-    )
-''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS Library (
+                        BK_NAME VARCHAR(255),
+                        BK_ID VARCHAR(255) PRIMARY KEY,
+                        AUTHOR_NAME VARCHAR(255),
+                        BK_STATUS VARCHAR(255),
+                        CARD_ID VARCHAR(255),
+                        COURSE_CODE VARCHAR(255))''')
     db.commit()
     clear_and_display()
     root.update()
     root.mainloop()
 
-def student_page():
-    global bk_status,bk_id,bk_name,author_name,card_id,tree,cursor,db,course_code,search_entry
-    lf_bg = 'SkyBlue'  # Left Frame Background Color
-    rtf_bg = '#0099ff'  # Right Top Frame Background Color
-    rbf_bg = 'LightSkyBlue'  # Right Bottom Frame Background Color
-    btn_hlb_bg = '#6699ff'  # Background color for Head Labels and Buttons
-
-    lbl_font = ('Georgia', 13)  # Font for all labels
-    entry_font = ('Times New Roman', 12)  # Font for all Entry widgets
-    btn_font = ('Gill Sans MT', 13)
-
-    # Initializing the main GUI window
-    root = tk.Tk()
-    root.title('Library Management System')
-    root.geometry('1280x720')
-
-    tk.Label(root, text='LIBRARY MANAGEMENT SYSTEM', font=("Noto Sans CJK TC", 15, 'bold'), bg="LightSkyBlue", fg='black').pack(side=tk.TOP, fill=tk.X)
-
-    # StringVars
-    bk_status = tk.StringVar()
-    bk_name = tk.StringVar()
-    bk_id = tk.StringVar()
-    author_name = tk.StringVar()
-    card_id = tk.StringVar()
-    course_code=tk.StringVar()
-
-    # Frames
-
-    RT_frame = tk.Frame(root, bg=rtf_bg)
-    RT_frame.place(relx=0, y=30, relheight=0.2, relwidth=1)
-
-    RB_frame = tk.Frame(root, bg=rbf_bg)
-    RB_frame.place(relx=0, rely=0.24, relheight=0.785, relwidth=1)
-
-
-    # Right Top Frame
-    tk.Button(RT_frame, text='Issued Books', font=btn_font, bg=btn_hlb_bg, width=17, ).place(x=865,y=30)
-    tk.Button(RT_frame, text='Change Password', font=btn_font, bg=btn_hlb_bg, width=17, ).place(x=178, y=30)
-
-    # Right Bottom Frame
-    tk.Label(RB_frame, text='AVAILABLE BOOKS', bg=rbf_bg, font=("Noto Sans CJK TC", 15, 'bold')).pack(side=tk.TOP, fill=tk.X)
-    search_label = tk.Label(RT_frame, text='Search Books:', font=lbl_font, bg=rtf_bg)
-    search_label.place(x=700, y=90)
-
-    search_entry = tk.Entry(RT_frame, width=30, font=entry_font)
-    search_entry.place(x=825, y=90)
-
-    search_button = tk.Button(RT_frame, text='Search books', font=('Gill Sans MT', 10), bg='LightSkyBlue', width=15, )
-    search_button.place(x=1100, y=87)
-
-    tree = ttk.Treeview(RB_frame, selectmode='browse', columns=('Book Name', 'Book ID', 'Author', 'Status', 'Issuer Card ID','Course Code'))
-
-    XScrollbar = ttk.Scrollbar(tree, orient='horizontal', command=tree.xview)
-    YScrollbar = ttk.Scrollbar(tree, orient='vertical', command=tree.yview)
-    XScrollbar.pack(side='bottom', fill='x')
-    YScrollbar.pack(side='right', fill='y')
-
-    tree.config(xscrollcommand=XScrollbar.set, yscrollcommand=YScrollbar.set)
-
-    tree.heading('Book Name', text='Book Name', anchor='center')
-    tree.heading('Book ID', text='Book ID', anchor='center')
-    tree.heading('Author', text='Author', anchor='center')
-    tree.heading('Status', text='Status of the Book', anchor='center')
-    tree.heading('Course Code',text='Course Code',anchor='center')
-
-    tree.column('#0', width=0, stretch='no')
-    tree.column('#1', width=225, stretch='no')
-    tree.column('#2', width=70, stretch='no')
-    tree.column('#3', width=150, stretch='no')
-    tree.column('#4', width=0, stretch='no')
-    tree.column('#5', width=0, stretch='no')
-    tree.column("#6", width=150,stretch='no')
-
-    tree.place(y=30, x=0, relheight=0.9, relwidth=1)
-
-    # Database connection
-
-    #clear_and_display()
-
-    # Finalizing the window
-    root.update()
-    root.mainloop()
 def login_page():
     # Function to create the login page
     global log_pg,entry_username, entry_password
@@ -453,13 +394,14 @@ def login_page():
     username = tk.StringVar()
     password = tk.StringVar()
     
-    entry_username = tk.Entry(mainframe, textvariable=username, width=12, bd=2, font=("arial", 30))
+    entry_username = tk.Entry(mainframe, textvariable=username, width=12, bd=2, font=("arial", 30,"italic"))
     entry_username.place(x=400, y=50)
-    entry_password = tk.Entry(mainframe, textvariable=password, width=12, bd=2, font=("arial", 30), show="*")
+    entry_password = tk.Entry(mainframe, textvariable=password, width=12, bd=2, font=("arial", 30,"italic"), show="*")
     entry_password.place(x=400, y=150)
     
     login_btn = tk.Button(mainframe, text="LOGIN", font="arial", bg="LightBlue", width=30, command=login)
     login_btn.place(x=250, y=250)
     log_pg.mainloop()
 
+create_database_if_not_exists()
 login_page()
