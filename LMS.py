@@ -1,10 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 import mysql.connector
-import time
 from datetime import *
 
-# Global variables
 global cursor, tree, bk_status, bk_name, bk_id, author_name, card_id, search_entry, db, course_code, username,show_extra_columns, lable_var
 buttons=[]
 
@@ -157,7 +155,6 @@ def change_availability():
             db.commit()
     clear_and_display()
 
-
 def search_books():
     # Function to search for books
     global tree, cursor
@@ -182,6 +179,7 @@ def issued_books():
     data = cursor.fetchall()
     for records in data:
         tree.insert('', 'end', values=records)
+
 def change_password():
     # Function to change the password
     global cursor, db
@@ -220,6 +218,7 @@ def change_password():
             messagebox.showerror('Incorrect Password', 'The entered current password is incorrect.')
     else:
         messagebox.showerror('User not found', 'User not found in the database.')
+
 def issued_by_student(cursor):
     # Function to display books issued by the current student (based on the username)
     global  tree, username, buttons, lable_var
@@ -235,12 +234,14 @@ def issued_by_student(cursor):
     for record in data:
         # Assuming 'ISSUE_DATE' and 'RETURN_DATE' columns exist in your database
         tree.insert('', 'end', values=record)
+
 def back_button():
     global cursor, tree, buttons, lable_var
     lable_var.set('AVAILABLE BOOKS')
     toggle_extra_columns()
     toggle_visibility(buttons)
     display_available_books() 
+
 def toggle_extra_columns():
     global show_extra_columns, tree
 
@@ -354,6 +355,7 @@ def admin_panel():
     search_image = tk.PhotoImage(file="D:\LMS\search.png")
     search_button = tk.Button(RT_frame, image=search_image, font=('Gill Sans MT', 10), bg=btn_hlb_bg, width=20, command=search_books)
     search_button.place(x=800, y=101)
+
     change_password_btn = tk.Button(left_frame, text='Change Password', font=btn_font, bg=btn_hlb_bg, width=20, command=change_password)
     change_password_btn.place(x=90, y=555)
 
@@ -385,6 +387,8 @@ def admin_panel():
     tree.column('#5', width=132, stretch='no')
     tree.column('#6', width=130,stretch='no')
     tree.column('#7', width=120,stretch='no')
+    tree.column('#8', width=0,stretch='no')
+
 
     tree.place(y=30, x=0, relheight=0.9, relwidth=1)
 
@@ -463,6 +467,15 @@ def student_page():
     back_btn = tk.Button(RT_frame, text='Back', font=btn_font, bg=btn_hlb_bg, width=17,command=back_button)
     buttons = [issued_books_btn, chg_pass_btn, back_btn]
 
+    search_label = tk.Label(RT_frame, text='Search Books:', font=lbl_font, bg=rtf_bg)
+    search_label.place(x=430, y=100)
+    
+    search_entry = tk.Entry(RT_frame, width=30, font=entry_font)
+    search_entry.place(x=550, y=100)
+
+    search_image = tk.PhotoImage(file="D:\LMS\search.png")
+    search_button = tk.Button(RT_frame, image=search_image, font=('Gill Sans MT', 10), bg=btn_hlb_bg, width=20, command=search_books)
+    search_button.place(x=800, y=101)
 
     # Create the Treeview and Scrollbars
     tree = ttk.Treeview(RB_frame, selectmode='browse', columns=('Book Name', 'Book ID', 'Author', 'Status', 'Issuer Card ID','Course Code','Time','Return'))
@@ -488,6 +501,9 @@ def student_page():
     tree.column('#4', width=0, stretch='no')
     tree.column('#5', width=0, stretch='no')
     tree.column('#6',width=150,stretch='no')
+    tree.column('#7', width=0, stretch='no')
+    tree.column('#8', width=0, stretch='no')
+
 
     tree.place(y=30, x=30, relheight=0.9, relwidth=1)
 
