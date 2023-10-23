@@ -1,10 +1,12 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 import mysql.connector
-from datetime import datetime
+import time
+from datetime import *
 
 # Global variables
-global cursor, tree, bk_status, bk_name, bk_id, author_name, card_id, search_entry, db, course_code, username
+global cursor, tree, bk_status, bk_name, bk_id, author_name, card_id, search_entry, db, course_code, username,show_extra_columns, lable_var
+buttons=[]
 
 def login():
     global username 
@@ -97,8 +99,8 @@ def add_record():
     if surety:
         try:
             cursor.execute(
-                'INSERT INTO Library (BK_NAME, BK_ID, AUTHOR_NAME, BK_STATUS, CARD_ID, COURSE_CODE, TIMESTAMP) VALUES (%s, %s, %s, %s, %s,%s,%s)',
-                (bk_name.get(), bk_id.get(), author_name.get(), bk_status.get(), card_id.get(), course_code.get(), current_time))
+                'INSERT INTO Library (BK_NAME, BK_ID, AUTHOR_NAME, BK_STATUS, CARD_ID, COURSE_CODE, TIMESTAMP, RETURN_DATE) VALUES (%s, %s, %s, %s, %s,%s,%s,%s)',
+                (bk_name.get(), bk_id.get(), author_name.get(), bk_status.get(), card_id.get(), course_code.get(), current_time, current_time))
             db.commit()
             clear_and_display()
             messagebox.showinfo('Record added', 'The new record was successfully added to your database')
@@ -127,30 +129,34 @@ def delete_inventory():
     db.commit()
 
 def change_availability():
-    # Function to change book availability
     global card_id, tree, cursor, db
+
     if not tree.selection():
         messagebox.showerror('Error!', 'Please select a book from the database')
         return
+
     current_item = tree.focus()
     values = tree.item(current_item)
     BK_id = values['values'][1]
     BK_status = values["values"][3]
+
     if BK_status == 'Issued':
         surety = messagebox.askyesno('Is return confirmed?', 'Has the book been returned to you?')
         if surety:
             return_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            cursor.execute('UPDATE Library SET BK_STATUS=%s, CARD_ID=%s, TIMESTAMP=%s WHERE BK_ID=%s', ('Available', 'N/A',return_time, BK_id))
+            cursor.execute('UPDATE Library SET BK_STATUS=%s, CARD_ID=%s, TIMESTAMP=%s, RETURN_DATE=%s WHERE BK_ID=%s', ('Available', 'N/A', return_time, None, BK_id))
             db.commit()
         else:
             messagebox.showinfo('Cannot be returned', 'The book status cannot be set to Available unless it has been returned')
     else:
         issue_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        issue_card=issuer_card()
-        if issue_card != None:
-            cursor.execute('UPDATE Library SET BK_STATUS=%s, CARD_ID=%s, TIMESTAMP=%s WHERE BK_ID=%s', ('Issued', issue_card, issue_time, BK_id))
+        issue_card = issuer_card()
+        if issue_card is not None:
+            return_date = (datetime.now() + timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
+            cursor.execute('UPDATE Library SET BK_STATUS=%s, CARD_ID=%s, TIMESTAMP=%s, RETURN_DATE=%s WHERE BK_ID=%s', ('Issued', issue_card, issue_time, return_date, BK_id))
             db.commit()
     clear_and_display()
+
 
 def search_books():
     # Function to search for books
@@ -214,6 +220,64 @@ def change_password():
             messagebox.showerror('Incorrect Password', 'The entered current password is incorrect.')
     else:
         messagebox.showerror('User not found', 'User not found in the database.')
+def issued_by_student(cursor):
+    # Function to display books issued by the current student (based on the username)
+    global  tree, username, buttons, lable_var
+    lable_var.set('ISSUED BOOKS')
+    # Clear the Treeview widget
+    tree.delete(*tree.get_children())
+    toggle_extra_columns()
+    toggle_visibility(buttons)
+    # Execute a query to fetch books issued by the current student
+    cursor.execute('SELECT * FROM Library WHERE CARD_ID = %s', (username,))
+    data = cursor.fetchall()
+
+    for record in data:
+        # Assuming 'ISSUE_DATE' and 'RETURN_DATE' columns exist in your database
+        tree.insert('', 'end', values=record)
+def back_button():
+    global cursor, tree, buttons, lable_var
+    lable_var.set('AVAILABLE BOOKS')
+    toggle_extra_columns()
+    toggle_visibility(buttons)
+    display_available_books() 
+def toggle_extra_columns():
+    global show_extra_columns, tree
+
+    # Toggle the flag
+    show_extra_columns = not show_extra_columns
+
+    # Configure columns based on the flag
+    if show_extra_columns:
+        # Show the 'Issue Date' and 'Return Date' columns
+        tree.column('#7', width=100, stretch='no')
+        tree.column('#8', width=100, stretch='no')
+        tree.heading('#7', text='Issue Date', anchor='center')
+        tree.heading('#8', text='Return Date', anchor='center')
+    else:
+        # Hide the 'Issue Date' and 'Return Date' columns
+        tree.column('#7', width=0)
+        tree.column('#8', width=0)
+        tree.heading('#7', text='', anchor='center')
+        tree.heading('#8', text='', anchor='center')
+
+def toggle_visibility(buttons):
+    for b in buttons:
+        if b.winfo_ismapped():
+            # Button is currently visible, hide it
+            b.pack_forget()
+        else:
+            # Button is currently hidden, show it
+            b.pack()
+
+def display_available_books():
+    # Function to display available books in the Treeview
+    global cursor, tree
+    tree.delete(*tree.get_children())  # Clear the Treeview
+    cursor.execute('SELECT * FROM Library WHERE BK_STATUS = %s', ('Available',))
+    data = cursor.fetchall()
+    for records in data:
+        tree.insert('', 'end', values=records)
 
 def admin_panel():
     global bk_status,bk_id,bk_name,author_name,card_id,tree,cursor,db,course_code,search_entry
@@ -296,7 +360,7 @@ def admin_panel():
     # Right Bottom Frame
     tk.Label(RB_frame, text='BOOK INVENTORY', bg=rbf_bg, font=("Noto Sans CJK TC", 15, 'bold')).pack(side=tk.TOP, fill=tk.X)
 
-    tree = ttk.Treeview(RB_frame, selectmode='browse', columns=('Book Name', 'Book ID', 'Author', 'Status', 'Issuer Card ID','Course Code','Time'))
+    tree = ttk.Treeview(RB_frame, selectmode='browse', columns=('Book Name', 'Book ID', 'Author', 'Status', 'Issuer Card ID','Course Code','Time','Return'))
 
     XScrollbar = ttk.Scrollbar(tree, orient='horizontal', command=tree.xview)
     YScrollbar = ttk.Scrollbar(tree, orient='vertical', command=tree.yview)
@@ -340,7 +404,8 @@ def admin_panel():
         BK_STATUS VARCHAR(255),
         CARD_ID VARCHAR(255),
         COURSE_CODE VARCHAR(255),
-        TIMESTAMP DATETIME
+        TIMESTAMP DATETIME,
+        RETURN_DATE DATETIME
     )
 ''')
     db.commit()
@@ -349,7 +414,9 @@ def admin_panel():
     root.mainloop()
 
 def student_page():
-    global bk_status,bk_id,bk_name,author_name,card_id,tree,cursor,db,course_code,search_entry
+    global bk_status, bk_id, bk_name, author_name, card_id, tree, cursor, db, course_code, search_entry, show_extra_columns, buttons, lable_var
+
+    show_extra_columns = False
     lf_bg = 'SkyBlue'  # Left Frame Background Color
     rtf_bg = '#0099ff'  # Right Top Frame Background Color
     rbf_bg = 'LightSkyBlue'  # Right Bottom Frame Background Color
@@ -372,33 +439,33 @@ def student_page():
     bk_id = tk.StringVar()
     author_name = tk.StringVar()
     card_id = tk.StringVar()
-    course_code=tk.StringVar()
+    course_code = tk.StringVar()
+    lable_var=tk.StringVar()
 
     # Frames
-
     RT_frame = tk.Frame(root, bg=rtf_bg)
     RT_frame.place(relx=0, y=30, relheight=0.2, relwidth=1)
 
     RB_frame = tk.Frame(root, bg=rbf_bg)
     RB_frame.place(relx=0, rely=0.24, relheight=0.785, relwidth=1)
 
-
-    # Right Top Frame
-    tk.Button(RT_frame, text='Issued Books', font=btn_font, bg=btn_hlb_bg, width=17, ).place(x=865,y=30)
-    tk.Button(RT_frame, text='Change Password', font=btn_font, bg=btn_hlb_bg, width=17, ).place(x=178, y=30)
-
     # Right Bottom Frame
-    tk.Label(RB_frame, text='AVAILABLE BOOKS', bg=rbf_bg, font=("Noto Sans CJK TC", 15, 'bold')).pack(side=tk.TOP, fill=tk.X)
-    search_label = tk.Label(RT_frame, text='Search Books:', font=lbl_font, bg=rtf_bg)
-    search_label.place(x=700, y=90)
+    inital='AVAILABLE BOOKS'
+    lable_var.set(inital)
+    tk.Label(RB_frame, textvariable=lable_var, bg=rbf_bg, font=("Noto Sans CJK TC", 15, 'bold')).pack(side=tk.TOP, fill=tk.X)    
+    # Right Top Frame
+    issued_books_btn = tk.Button(RT_frame, text='Issued Books', font=btn_font, bg=btn_hlb_bg, width=17, command=lambda: issued_by_student(cursor))
+    issued_books_btn.place(x=865, y=30)
 
-    search_entry = tk.Entry(RT_frame, width=30, font=entry_font)
-    search_entry.place(x=825, y=90)
+    chg_pass_btn = tk.Button(RT_frame, text='Change Password', font=btn_font, bg=btn_hlb_bg, width=17,command=change_password)
+    chg_pass_btn.place(x=178, y=30)
 
-    search_button = tk.Button(RT_frame, text='Search books', font=('Gill Sans MT', 10), bg='LightSkyBlue', width=15, )
-    search_button.place(x=1100, y=87)
+    back_btn = tk.Button(RT_frame, text='Back', font=btn_font, bg=btn_hlb_bg, width=17,command=back_button)
+    buttons = [issued_books_btn, chg_pass_btn, back_btn]
 
-    tree = ttk.Treeview(RB_frame, selectmode='browse', columns=('Book Name', 'Book ID', 'Author', 'Status', 'Issuer Card ID','Course Code'))
+
+    # Create the Treeview and Scrollbars
+    tree = ttk.Treeview(RB_frame, selectmode='browse', columns=('Book Name', 'Book ID', 'Author', 'Status', 'Issuer Card ID','Course Code','Time','Return'))
 
     XScrollbar = ttk.Scrollbar(tree, orient='horizontal', command=tree.xview)
     YScrollbar = ttk.Scrollbar(tree, orient='vertical', command=tree.yview)
@@ -411,7 +478,8 @@ def student_page():
     tree.heading('Book ID', text='Book ID', anchor='center')
     tree.heading('Author', text='Author', anchor='center')
     tree.heading('Status', text='Status of the Book', anchor='center')
-    tree.heading('Course Code',text='Course Code',anchor='center')
+    tree.heading('Issuer Card ID',text='',anchor='center')
+    tree.heading('Course Code', text='Course Code', anchor='center')
 
     tree.column('#0', width=0, stretch='no')
     tree.column('#1', width=225, stretch='no')
@@ -419,17 +487,34 @@ def student_page():
     tree.column('#3', width=150, stretch='no')
     tree.column('#4', width=0, stretch='no')
     tree.column('#5', width=0, stretch='no')
-    tree.column("#6", width=150,stretch='no')
+    tree.column('#6',width=150,stretch='no')
 
-    tree.place(y=30, x=0, relheight=0.9, relwidth=1)
+    tree.place(y=30, x=30, relheight=0.9, relwidth=1)
 
-    # Database connection
-
-    #clear_and_display()
-
-    # Finalizing the window
+    db = mysql.connector.connect(
+        host='localhost',
+        user='root',
+        password='K@ustubh0912',
+        database='library'
+    )
+    cursor = db.cursor()
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS Library (
+        BK_NAME VARCHAR(255),
+        BK_ID VARCHAR(255) PRIMARY KEY,
+        AUTHOR_NAME VARCHAR(255),
+        BK_STATUS VARCHAR(255),
+        CARD_ID VARCHAR(255),
+        COURSE_CODE VARCHAR(255),
+        TIMESTAMP DATETIME,
+        RETURN_DATE DATETIME
+    )
+    ''')
+    db.commit()
+    display_available_books()
     root.update()
     root.mainloop()
+
 def login_page():
     # Function to create the login page
     global log_pg,entry_username, entry_password
