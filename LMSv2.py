@@ -3,15 +3,25 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import sys
 from datetime import datetime
+from dotenv import load_dotenv
+import os
 import pymysql
+
+load_dotenv()
+
+DB_HOST = os.getenv("DB_HOST")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_NAME = os.getenv("DB_NAME")
+DB_CHARSET = os.getenv("DB_CHARSET")
 
 def create_db_connection():
     connection = pymysql.connect(
-        host='localhost',
-        user='root',
-        password='K@ustubh0912',
-        database='mydb',
-        charset='utf8mb4'
+        host=DB_HOST,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        database=DB_NAME,
+        charset=DB_CHARSET
     )
 
     # Create tables if they don't exist
