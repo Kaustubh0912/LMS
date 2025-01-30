@@ -185,3 +185,5 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 
 Enjoy using the Library Management System! If you have any questions or issues, feel free to open an issue on GitHub.
 
+---
+Made with ❤️ by [NOX]
