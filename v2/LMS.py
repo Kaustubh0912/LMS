@@ -322,6 +322,7 @@ class BookListWidget(QWidget):
                     request_button.setEnabled(False)
 
                 self.book_table.setCellWidget(i, 7, request_button)
+
 class ManageBooksWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -651,6 +652,7 @@ class ManageBooksWidget(QWidget):
         self.status_combo.setCurrentIndex(0)
         self.course_code_input.clear()
         self.selected_book = None
+
 class AdminPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)  # Properly pass parent to super
@@ -1028,6 +1030,7 @@ class LibraryApp(QMainWindow):
         else:
             self.close()  # Close the application if login is cancelled
             sys.exit()  
+
 class RequestManagementWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__()
@@ -1243,7 +1246,6 @@ class RequestManagementWidget(QWidget):
             if 'connection' in locals():
                 connection.close()
 
-                
 def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
