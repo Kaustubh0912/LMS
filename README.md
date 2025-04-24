@@ -1,6 +1,6 @@
 # Library Management System (LMS)
 
-A **Library Management System** built using **PyQt5** and **MySQL**. This application allows users to manage books, handle book requests, and perform administrative tasks such as user management and request approvals.
+A modern **Library Management System** built using **PyQt5** and **MySQL** with a beautiful Glassmorphism UI. This application allows users to manage books, handle book requests, and perform administrative tasks such as user management and request approvals.
 
 ---
 
@@ -11,26 +11,36 @@ A **Library Management System** built using **PyQt5** and **MySQL**. This applic
   - Admins have full access to manage books, users, and requests.
   - Students can view available books, request books, and check their request status.
 
+- **Dashboard**:
+  - Interactive dashboard with statistics and quick access buttons.
+  - Personalized view for administrators and students.
+  - Real-time statistics on books, users, and pending requests.
+
 - **Book Management**:
   - Add, edit, and delete books.
+  - Advanced search and filtering capabilities.
   - Track book status (Available, Issued).
   - Manage book requests and approvals.
 
 - **User Management**:
   - Admins can add, edit, and delete users.
   - Set book limits for students.
+  - Monitor user activity and borrowed books.
 
 - **Request Management**:
   - Students can request books.
   - Admins can approve or reject requests.
-  - Track pending, approved, and rejected requests.
+  - Track pending, approved, and rejected requests with visual indicators.
 
 - **Search and Filter**:
-  - Search books by title, ID, author, or course code.
+  - Enhanced search functionality across multiple fields.
   - Filter books by availability or request status.
+  - Save and manage search preferences.
 
-- **Dark Theme**:
-  - The application uses a modern dark theme for better user experience.
+- **Modern Glassmorphism UI**:
+  - Beautiful transparent glass-like interface.
+  - Responsive design with smooth animations.
+  - Dark theme for enhanced visibility and reduced eye strain.
 
 ---
 
@@ -40,13 +50,9 @@ Before running the application, ensure you have the following installed:
 
 1. **Python 3.7+** - [Download Python](https://www.python.org/downloads/)
 2. **MySQL Server** - [Download MySQL](https://dev.mysql.com/downloads/mysql/)
-3. **PyQt5** - Install via pip:
+3. Required Python packages:
    ```bash
-   pip install PyQt5
-   ```
-4. **PyMySQL** - Install via pip:
-   ```bash
-   pip install pymysql
+   pip install PyQt5 pymysql python-dotenv cryptography
    ```
 
 ---
@@ -55,27 +61,48 @@ Before running the application, ensure you have the following installed:
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/Kaustubh0912/LMS.git
+   git clone https://github.com/yourusername/LMS.git
    cd LMS
    ```
 
-2. **Set Up the Database**:
-   - Create a MySQL database named `mydb` (or any name you prefer).
-   - Update the database connection details in the `create_db_connection()` function in `LMSv2.py`:
-     ```python
-     connection = pymysql.connect(
-         host='localhost',
-         user='root',
-         password='your_password',
-         database='mydb',
-         charset='utf8mb4'
-     )
+2. **Set Up Environment Variables**:
+   - Create a `.env` file in the project root with the following content:
+     ```
+     DB_HOST=localhost
+     DB_USER=your_mysql_username
+     DB_PASSWORD=your_mysql_password
+     DB_NAME=library_db
+     DB_CHARSET=utf8mb4
      ```
 
-3. **Run the Application**:
+3. **Create Asset Directories**:
    ```bash
-   python LMSv2.py
+   mkdir -p assets/images
+   mkdir -p assets/fonts
    ```
+
+4. **Run the Application**:
+   ```bash
+   python v3/main.py
+   ```
+
+---
+
+## Architecture
+
+The application follows a modular architecture for improved maintainability and extensibility:
+
+```
+lms/
+├── assets/             # Images, icons, and fonts
+├── components/         # Reusable UI components
+├── database/           # Database connections and DAOs
+├── models/             # Data models
+├── styles/             # UI styling
+├── utils/              # Utility functions
+├── views/              # Application screens
+└── main.py             # Application entry point
+```
 
 ---
 
@@ -89,39 +116,51 @@ Before running the application, ensure you have the following installed:
   - **Student**:
     - Register a new student account via the Admin Panel.
 
-### **Admin Panel**
+### **Dashboard**
+- View statistics and quick access to key features.
+- Admin dashboard shows total books, users, and pending requests.
+- Student dashboard shows borrowed books, available quota, and pending requests.
+
+### **Admin Features**
 - **Manage Books**:
-  - Add, edit, or delete books.
-  - View and manage book requests.
+  - Add, edit, or delete books with an enhanced interface.
+  - Search books using the new search feature.
+  - Return borrowed books with a single click.
 - **Manage Users**:
   - Add, edit, or delete users.
   - Set book limits for students.
 - **Request Management**:
-  - Approve or reject book requests.
+  - View statistics on pending, approved, and rejected requests.
+  - Approve or reject book requests with enhanced visibility.
 
-### **Student Panel**
-- **View Books**:
-  - Search and filter available books.
+### **Student Features**
+- **Browse Books**:
+  - Use advanced search and filter features.
+  - View book availability and details.
 - **Request Books**:
-  - Request books and check request status.
+  - Request available books with a streamlined process.
+  - Track request status with visual indicators.
 
 ---
-
+<!-- 
 ## Screenshots
 
-### Login Page
-![Login Page](screenshots/login.png)
+### Login Page with Glassmorphism UI
+![Login Page](screenshots/login_glassmorphism.png)
 
-### Admin Panel
-![Admin Panel](screenshots/admin_panel.png)
+### Admin Dashboard
+![Admin Dashboard](screenshots/admin_dashboard.png)
 
-### Student Panel
-![Student Panel](screenshots/student_panel.png)
+### Book Management
+![Book Management](screenshots/book_management.png)
 
 ### Request Management
-![Request Management](screenshots/request_management.png)
+![Request Management](screenshots/request_management_glass.png)
 
----
+### User Management
+![User Management](screenshots/user_management.png)
+
+--- -->
 
 ## Database Schema
 
@@ -137,11 +176,12 @@ The application uses the following tables:
    - `course_code` (Course Code)
    - `issue_date` (Date of Issue)
    - `return_date` (Date of Return)
+   - `genre` (Book Genre)
 
 2. **users**:
    - `id` (Primary Key)
    - `username` (Unique Username)
-   - `password` (Hashed Password)
+   - `password` (Password)
    - `is_admin` (Boolean: True for Admin, False for Student)
    - `book_limit` (Maximum Books a Student Can Issue)
    - `books_issued` (Number of Books Currently Issued)
@@ -150,10 +190,59 @@ The application uses the following tables:
    - `id` (Primary Key)
    - `book_id` (Foreign Key to `books`)
    - `user_id` (Foreign Key to `users`)
-   - `status` (Pending, Approved, Rejected)
+   - `status` (Pending, Approved, Rejected, Returned)
    - `request_date` (Date of Request)
    - `approval_date` (Date of Approval/Rejection)
    - `notes` (Additional Notes)
+
+4. **notifications**:
+   - `id` (Primary Key)
+   - `user_id` (Foreign Key to `users`)
+   - `message` (Notification Text)
+   - `created_at` (Creation Timestamp)
+   - `is_read` (Boolean: Whether notification has been read)
+   - `notification_type` (Type of notification)
+   - `related_id` (Related entity ID)
+
+---
+
+## New Features in v3
+
+1. **Glassmorphism UI**:
+   - Beautiful transparent glass-like interface elements
+   - Smooth hover effects and transitions
+   - Improved visual hierarchy and readability
+
+2. **Interactive Dashboard**:
+   - User-specific statistics and quick actions
+   - Real-time data display
+   - Navigation shortcuts to common tasks
+
+3. **Enhanced Book Management**:
+   - Advanced search functionality in the admin panel
+   - Improved book detail display
+   - More intuitive book return process
+
+4. **Improved Navigation**:
+   - Tab-based navigation with better visual indicators
+   - Quick access buttons in the dashboard
+   - More intuitive user flow
+
+5. **Better Error Handling**:
+   - Graceful handling of missing resources
+   - Improved database connection management
+   - Descriptive error messages
+
+---
+
+## Future Enhancements
+
+- **Book Recommendations**: Personalized book recommendations based on borrowing history
+- **Fine Management**: Track and manage overdue book fines
+- **Email Notifications**: Send email alerts for due dates and request updates
+- **Barcode Integration**: Support for scanning book barcodes
+- **Reports and Analytics**: Advanced reporting and data visualization
+- **User Profiles**: Enhanced user profiles with reading preferences
 
 ---
 
@@ -175,13 +264,7 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 
 ---
 
-## Acknowledgments
 
-- **PyQt5** for the GUI framework.
-- **MySQL** for the database backend.
-- **PyMySQL** for MySQL database connectivity.
-
----
 
 Enjoy using the Library Management System! If you have any questions or issues, feel free to open an issue on GitHub.
 
